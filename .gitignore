@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build & Dist
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+
+# Logs
+*.log
+.claude/logs/*.log
+.claude/logs/session-summary.md
+
+# Temporary
+.claude/tmp/
+*.tmp
+temp/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Git
+.git/
+
+# CloudStarter specific
+.claude/stack.json
