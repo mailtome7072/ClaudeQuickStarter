@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  "_comment": "ClaudeQuickStarter 템플릿 기본 설정. 부트스트랩 후 프로젝트에 맞게 조정하세요.",
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/pretooluse-forbidden-area-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/pretooluse-scope-validator.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/posttooluse-loop-detector.sh"
+          }
+        ]
+      }
+    ]
+  },
+
+  "_windows_note": "Windows에서 bash가 PATH에 없으면 위 명령어를 'pwsh -File scripts/hooks/*.ps1'로 변경하세요. forbidden-area-guard만 .ps1 변형이 있으며, 나머지 두 훅은 Phase 8 후속 작업에서 PowerShell 변형 추가 예정."
+}

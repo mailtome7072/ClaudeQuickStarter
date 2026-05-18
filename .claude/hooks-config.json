@@ -1,0 +1,18 @@
+{
+  "$comment": "하네스 훅 동작 옵션. 프로젝트별로 조정 가능.",
+
+  "scope_validator": {
+    "strict": false,
+    "_comment": "true로 변경 시 scope.md 없이 Edit/Write 차단. 초기 도입 시 false 권장 (경고만)."
+  },
+
+  "loop_detector": {
+    "threshold": 3,
+    "_comment": "동일 파일 N회 수정 시 경고. 너무 낮으면 잦은 경고, 너무 높으면 효과 약함."
+  },
+
+  "forbidden_area": {
+    "additional_patterns": [],
+    "_comment": "프로젝트별 추가 금지 영역 정규식 (기본 패턴은 훅 스크립트에 박혀 있음)"
+  }
+}
