@@ -35,7 +35,21 @@ claude --version && git --version && docker --version && jq --version
 
 > 각 단계는 앞 단계의 결과 위에서만 의미가 있습니다. **순서대로** 진행하세요.
 
-### Step 0 — 저장소 복제
+### Step 0 — 저장소 생성
+
+#### 방법 A: "Use this template" 버튼 (권장)
+
+1. https://github.com/mailtome7072/ClaudeQuickStarter 페이지에서 우측 상단 **"Use this template" → "Create a new repository"**
+2. 새 저장소 이름/오너 입력 → **Create repository**
+3. 로컬로 클론:
+   ```bash
+   git clone https://github.com/[your-org]/[your-repo].git
+   cd [your-repo]
+   ```
+
+이 방법은 깨끗한 단일 초기 커밋으로 시작하며 템플릿과 fork 관계가 없습니다.
+
+#### 방법 B: 수동 클론 (CLI 선호 또는 권한 제약 시)
 
 ```bash
 mkdir my-project && cd my-project
