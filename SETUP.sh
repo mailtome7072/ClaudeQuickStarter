@@ -1,276 +1,188 @@
 #!/bin/bash
-set -euo pipefail
-
 # ============================================================================
-# ClaudeQuickStarter — Modular SETUP Script
-# 기술스택에 따라 동적으로 초기화 모듈을 로드합니다.
-# 
+# SETUP.sh — ClaudeQuickStarter 부트스트랩 오케스트레이터
+#
+# /setup-project Phase C에서 호출됨. 다음 순서로 setup-modules를 합성:
+#   1. 선행 조건 (stack.json confirmed, jq, docker 등)
+#   2. .env 생성 (강한 시크릿 자동)
+#   3. docker-compose 생성
+#   4. Dockerfile 생성
+#   5. GitHub Actions 생성
+#   6. Frontend 스캐폴드 (스택 기반)
+#   7. Backend 스캐폴드 (스택 기반)
+#   8. 의존성 설치
+#   9. Docker 시작 테스트
+#
 # 사용법: bash SETUP.sh
-# 전제조건: .claude/stack.json이 존재해야 함 (stack-analyzer가 생성)
+# Windows: WSL2, Git Bash 또는 (향후) SETUP.ps1
 # ============================================================================
+set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_ROOT"
 
-# Color output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Colors
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 
 # ============================================================================
-# 1. 전제조건 확인
+# 1. 선행 조건
 # ============================================================================
-
-echo -e "${BLUE}=== ClaudeQuickStarter Setup ===${NC}"
-echo ""
+echo -e "${BLUE}=== ClaudeQuickStarter Setup ===${NC}\n"
 
 if [ ! -f ".claude/stack.json" ]; then
-    echo -e "${RED}✗ 에러: .claude/stack.json을 찾을 수 없습니다.${NC}"
-    echo "  먼저 'stack-analyzer' 에이전트를 실행하여 기술스택을 확정하세요."
-    echo "  Claude Code에서: \"기술스택 분석해줘.\""
+    echo -e "${RED}✗ .claude/stack.json 없음${NC}"
+    echo "  먼저 /analyze-stack을 실행하여 기술스택을 확정하세요."
     exit 1
 fi
 
-echo -e "${GREEN}✓ .claude/stack.json 발견${NC}"
-
-# ============================================================================
-# 2. 기술스택 파싱
-# ============================================================================
-
-echo -e "${YELLOW}기술스택 파싱 중...${NC}"
-
-if ! command -v jq &> /dev/null; then
-    echo -e "${RED}✗ jq가 설치되지 않았습니다. apt install jq 또는 brew install jq를 실행하세요.${NC}"
+STACK_STATUS=$(jq -r '.status // "pending"' .claude/stack.json 2>/dev/null || echo "invalid")
+if [ "$STACK_STATUS" != "confirmed" ]; then
+    echo -e "${RED}✗ .claude/stack.json status가 '$STACK_STATUS' (confirmed 아님)${NC}"
+    echo "  /analyze-stack을 다시 실행하여 스택을 확정하세요."
     exit 1
 fi
 
-FRONTEND=$(jq -r '.stack.frontend.ui_framework // "none"' .claude/stack.json)
-FRONTEND_PM=$(jq -r '.stack.frontend.package_manager // "pnpm"' .claude/stack.json)
-BACKEND=$(jq -r '.stack.backend.framework // "none"' .claude/stack.json)
-BACKEND_LANG=$(jq -r '.stack.backend.language // "none"' .claude/stack.json)
-DATABASE=$(jq -r '.stack.database.primary_database // "none"' .claude/stack.json)
+check_cmd() {
+    if ! command -v "$1" >/dev/null; then
+        echo -e "${RED}✗ $1 필요${NC}"
+        return 1
+    fi
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+echo -e "${YELLOW}[1/9] 필수 도구 확인${NC}"
+check_cmd jq || exit 1
+check_cmd openssl || exit 1
+check_cmd git || exit 1
+check_cmd docker || echo "  (docker 없음 — Docker 단계는 건너뜀)"
+check_cmd docker-compose || echo "  (docker-compose 없음 — Docker 단계는 건너뜀)"
+echo ""
+
+# ============================================================================
+# 2. 스택 출력
+# ============================================================================
+FE=$(jq -r '.stack.frontend.ui_framework // "none"' .claude/stack.json)
+BE=$(jq -r '.stack.backend.framework // "none"' .claude/stack.json)
+DB=$(jq -r '.stack.database.primary_database // "none"' .claude/stack.json)
 CACHE=$(jq -r '.stack.database.cache // "none"' .claude/stack.json)
 
-echo -e "${GREEN}✓ 기술스택 파싱 완료${NC}"
-echo ""
-echo "🔧 감지된 스택:"
-echo "  Frontend: $FRONTEND"
-echo "  Frontend PM: $FRONTEND_PM"
-echo "  Backend: $BACKEND"
-echo "  Database: $DATABASE"
+echo -e "${YELLOW}[2/9] 확정 스택${NC}"
+echo "  Frontend: $FE"
+echo "  Backend: $BE"
+echo "  DB: $DB"
 echo "  Cache: $CACHE"
 echo ""
 
 # ============================================================================
-# 3. 필수 도구 확인
+# 3. .env 생성
 # ============================================================================
-
-echo -e "${YELLOW}필수 도구 확인 중...${NC}"
-
-check_command() {
-    if ! command -v "$1" &> /dev/null; then
-        echo -e "${RED}✗ $1이(가) 설치되지 않았습니다.${NC}"
-        return 1
-    fi
-    echo -e "${GREEN}✓ $1 $(${1} --version 2>&1 | head -1)${NC}"
-    return 0
-}
-
-check_command git
-check_command docker
-check_command docker-compose
-
+echo -e "${YELLOW}[3/9] .env 생성 (강한 시크릿 자동)${NC}"
+bash scripts/setup-modules/generate-env.sh
 echo ""
 
 # ============================================================================
-# 4. Frontend 초기화 (조건부)
+# 4. docker-compose 생성
 # ============================================================================
-
-if [[ "$FRONTEND" != "none" && -d "app/frontend" ]]; then
-    echo -e "${YELLOW}Frontend 초기화 중: $FRONTEND...${NC}"
-    
-    case "$FRONTEND" in
-        *"React"*)
-            echo "  → React 프로젝트 감지"
-            cd "$PROJECT_ROOT/app/frontend"
-            if [ -f "package.json" ]; then
-                echo "  → package.json 발견, 의존성 설치 중..."
-                if [ "$FRONTEND_PM" = "pnpm" ]; then
-                    check_command pnpm
-                    pnpm install
-                elif [ "$FRONTEND_PM" = "npm" ]; then
-                    npm install
-                else
-                    yarn install
-                fi
-                echo -e "${GREEN}✓ Frontend 설치 완료${NC}"
-            fi
-            cd "$PROJECT_ROOT"
-            ;;
-        *"Next.js"*)
-            echo "  → Next.js 프로젝트 감지"
-            cd "$PROJECT_ROOT/app/frontend"
-            if [ -f "package.json" ]; then
-                if [ "$FRONTEND_PM" = "pnpm" ]; then
-                    pnpm install
-                else
-                    npm install
-                fi
-                echo -e "${GREEN}✓ Next.js 설치 완료${NC}"
-            fi
-            cd "$PROJECT_ROOT"
-            ;;
-        *"Vue"*)
-            echo "  → Vue 프로젝트 감지"
-            cd "$PROJECT_ROOT/app/frontend"
-            if [ -f "package.json" ]; then
-                if [ "$FRONTEND_PM" = "pnpm" ]; then
-                    pnpm install
-                else
-                    npm install
-                fi
-                echo -e "${GREEN}✓ Vue 설치 완료${NC}"
-            fi
-            cd "$PROJECT_ROOT"
-            ;;
-        *)
-            echo -e "${YELLOW}⚠ 미지원 Frontend: $FRONTEND${NC}"
-            ;;
-    esac
-    echo ""
-fi
+echo -e "${YELLOW}[4/9] docker-compose 생성${NC}"
+bash scripts/setup-modules/generate-docker-compose.sh
+echo ""
 
 # ============================================================================
-# 5. Backend 초기화 (조건부)
+# 5. Dockerfile 생성
 # ============================================================================
-
-if [[ "$BACKEND" != "none" && -d "app/backend" ]]; then
-    echo -e "${YELLOW}Backend 초기화 중: $BACKEND...${NC}"
-    
-    case "$BACKEND" in
-        "FastAPI")
-            echo "  → FastAPI 프로젝트 감지"
-            if [ "$BACKEND_LANG" = "Python 3.11+" ] || [ "$BACKEND_LANG" = "Python 3.12+" ]; then
-                cd "$PROJECT_ROOT/app/backend"
-                if [ ! -d ".venv" ]; then
-                    echo "  → Python 가상환경 생성 중..."
-                    python3 -m venv .venv
-                fi
-                source .venv/bin/activate
-                if [ -f "requirements.txt" ]; then
-                    echo "  → 의존성 설치 중..."
-                    pip install --upgrade pip setuptools wheel
-                    pip install -r requirements.txt
-                    echo -e "${GREEN}✓ FastAPI 설치 완료${NC}"
-                fi
-                cd "$PROJECT_ROOT"
-            fi
-            ;;
-        "Django")
-            echo "  → Django 프로젝트 감지"
-            cd "$PROJECT_ROOT/app/backend"
-            if [ ! -d ".venv" ]; then
-                python3 -m venv .venv
-            fi
-            source .venv/bin/activate
-            if [ -f "requirements.txt" ]; then
-                pip install --upgrade pip
-                pip install -r requirements.txt
-                echo -e "${GREEN}✓ Django 설치 완료${NC}"
-            fi
-            cd "$PROJECT_ROOT"
-            ;;
-        "Express")
-            echo "  → Express 프로젝트 감지"
-            cd "$PROJECT_ROOT/app/backend"
-            if [ -f "package.json" ]; then
-                npm install
-                echo -e "${GREEN}✓ Express 설치 완료${NC}"
-            fi
-            cd "$PROJECT_ROOT"
-            ;;
-        *)
-            echo -e "${YELLOW}⚠ 미지원 Backend: $BACKEND${NC}"
-            ;;
-    esac
-    echo ""
-fi
+echo -e "${YELLOW}[5/9] Dockerfile 생성${NC}"
+bash scripts/setup-modules/generate-dockerfiles.sh
+echo ""
 
 # ============================================================================
-# 6. .env 생성 (미존재 시)
+# 6. GitHub Actions 생성
 # ============================================================================
-
-if [ ! -f ".env" ]; then
-    echo -e "${YELLOW}.env 파일 생성 중...${NC}"
-    
-    cat > .env << 'EOF'
-# Database
-POSTGRES_DB=project_dev
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=dev_password_change_me
-DATABASE_URL=postgresql://postgres:dev_password_change_me@postgres:5432/project_dev
-
-# Redis
-REDIS_URL=redis://redis:6379/0
-
-# API
-API_HOST=http://backend:8000
-API_PORT=8000
-FRONTEND_URL=http://localhost:5173
-
-# JWT (FastAPI 기준)
-JWT_SECRET=your_secret_key_change_me
-JWT_ALGORITHM=HS256
-JWT_EXPIRATION_HOURS=24
-
-# 배포
-DOCKER_REGISTRY=ghcr.io
-DOCKER_NAMESPACE=your_github_org
-EOF
-    
-    echo -e "${GREEN}✓ .env 생성 완료 (보안을 위해 시크릿값을 변경하세요)${NC}"
-    echo ""
-fi
+echo -e "${YELLOW}[6/9] GitHub Actions 생성${NC}"
+bash scripts/setup-modules/generate-github-actions.sh
+echo ""
 
 # ============================================================================
-# 7. Docker 시작 테스트
+# 7. Frontend 스캐폴드
 # ============================================================================
+echo -e "${YELLOW}[7/9] Frontend 스캐폴드: $FE${NC}"
+case "$FE" in
+    React*) bash scripts/setup-modules/setup-frontend-react-vite.sh ;;
+    Vue*)   bash scripts/setup-modules/setup-frontend-vue.sh ;;
+    Next.js*) bash scripts/setup-modules/setup-frontend-nextjs.sh ;;
+    none)   echo "  (Frontend 없음)" ;;
+    *)      echo -e "${YELLOW}  ⚠ '$FE' 모듈 없음 — 수동 스캐폴드 필요${NC}" ;;
+esac
+echo ""
 
-echo -e "${YELLOW}Docker 서비스 시작 테스트 중...${NC}"
+# ============================================================================
+# 8. Backend 스캐폴드
+# ============================================================================
+echo -e "${YELLOW}[8/9] Backend 스캐폴드: $BE${NC}"
+case "$BE" in
+    FastAPI) bash scripts/setup-modules/setup-backend-fastapi.sh ;;
+    Django)  bash scripts/setup-modules/setup-backend-django.sh ;;
+    Express) bash scripts/setup-modules/setup-backend-express.sh ;;
+    none)    echo "  (Backend 없음)" ;;
+    *)       echo -e "${YELLOW}  ⚠ '$BE' 모듈 없음 — 수동 스캐폴드 필요${NC}" ;;
+esac
+echo ""
 
-if [ -f "docker-compose.yml" ]; then
-    echo "  → docker-compose.yml 발견"
-    docker-compose up -d 2>/dev/null || true
-    sleep 5
-    
-    if docker-compose ps | grep -q "running"; then
-        echo -e "${GREEN}✓ Docker 서비스 실행 중${NC}"
-        docker-compose down
+# Backend 의존성 설치 (FastAPI/Django의 경우)
+if [[ "$BE" == FastAPI || "$BE" == Django ]] && [ -f "app/backend/requirements.txt" ]; then
+    echo -e "${YELLOW}  → Python 가상환경 + 의존성 설치${NC}"
+    cd app/backend
+    if [ ! -d ".venv" ]; then python3 -m venv .venv; fi
+    # Windows/Unix 모두 호환
+    if [ -f ".venv/Scripts/activate" ]; then
+        source .venv/Scripts/activate
     else
-        echo -e "${YELLOW}⚠ Docker 서비스 시작 실패 (나중에 재시도)${NC}"
+        source .venv/bin/activate
     fi
-else
-    echo -e "${YELLOW}⚠ docker-compose.yml을 찾을 수 없습니다.${NC}"
-    echo "  Sprint 1에서 생성될 예정입니다."
+    pip install --upgrade pip setuptools wheel >/dev/null
+    pip install -r requirements.txt
+    deactivate
+    cd "$PROJECT_ROOT"
+    echo -e "${GREEN}  ✓ Python 의존성 설치 완료${NC}"
 fi
 
+# Frontend 의존성 설치
+if [ -f "app/frontend/package.json" ]; then
+    FE_PM=$(jq -r '.stack.frontend.package_manager // "pnpm"' .claude/stack.json)
+    echo -e "${YELLOW}  → Frontend 의존성 설치 ($FE_PM)${NC}"
+    cd app/frontend
+    case "$FE_PM" in
+        pnpm) command -v pnpm >/dev/null && pnpm install || npm install ;;
+        yarn) command -v yarn >/dev/null && yarn install || npm install ;;
+        npm|*) npm install ;;
+    esac
+    cd "$PROJECT_ROOT"
+    echo -e "${GREEN}  ✓ Frontend 의존성 설치 완료${NC}"
+fi
 echo ""
 
 # ============================================================================
-# 8. 완료 메시지
+# 9. Docker 시작 테스트
 # ============================================================================
+echo -e "${YELLOW}[9/9] Docker 시작 테스트${NC}"
+if command -v docker-compose >/dev/null && [ -f "docker-compose.yml" ]; then
+    docker-compose up -d 2>/dev/null || echo "  ⚠ 시작 실패 (수동 확인 필요)"
+    sleep 3
+    docker-compose ps
+    echo ""
+    echo "  로컬 종료: docker-compose down"
+else
+    echo "  (docker-compose 또는 docker-compose.yml 없음 — 건너뜀)"
+fi
+echo ""
 
-echo -e "${GREEN}=== SETUP 완료! ===${NC}"
-echo ""
-echo "✅ 다음 단계:"
-echo "  1. .env 파일의 시크릿값을 변경하세요 (POSTGRES_PASSWORD, JWT_SECRET 등)"
-echo "  2. GitHub에 푸시하세요 (git add . && git commit -m 'Setup complete')"
-echo "  3. Claude Code에서 /sprint-planner를 실행하세요"
-echo ""
-echo "🚀 개발 시작:"
-echo "  docker-compose up    # 로컬 서버 시작"
-echo "  pnpm dev            # (Frontend) 개발 서버"
-echo "  python -m uvicorn app.main:app --reload  # (Backend) 개발 서버"
-echo ""
+# ============================================================================
+# 완료
+# ============================================================================
+echo -e "${GREEN}=== SETUP 완료 ===${NC}\n"
+echo "다음 단계:"
+echo "  1. git status로 생성된 파일 확인"
+echo "  2. .env 검토 (시크릿 자동 생성됨, .gitignored)"
+echo "  3. git add . && git commit -m 'Bootstrap: stack confirmed and scaffolded'"
+echo "  4. Claude Code: \"PRD 기반 ROADMAP 생성해줘.\""
+echo "  5. Claude Code: \"sprint 1 계획 세워줘.\""
+echo "  6. Claude Code: /sprint-dev 1"

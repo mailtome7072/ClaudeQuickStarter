@@ -1,14 +1,21 @@
-# .claude/agents/stack-analyzer.md
+---
+name: stack-analyzer
+description: PRD.md §5의 기술스택을 분석하고 사용자와의 대화로 확정합니다. 완결성/호환성/최적화를 검증하고 6가지 의사결정 질문(로깅, 모니터링, MFA, 파일 저장소, 배포 전략, 테스트 커버리지)을 던진 후 `.claude/stack.json`을 작성합니다. PRD 작성 완료 후, 사용자가 "기술스택 분석해줘", "스택 분석", "/analyze-stack" 등을 입력하면 호출하세요.
+tools: Read, Grep, Glob, Write, Edit, Bash, AskUserQuestion
+model: opus
+---
+
+# stack-analyzer
 
 ## 에이전트 정보
 
 | 항목 | 값 |
 |------|-----|
 | **이름** | stack-analyzer |
-| **모델** | Claude Opus 4.5 |
+| **모델** | Claude Opus (최신 — 현재 4.7) |
 | **목적** | PRD의 기술스택 섹션 분석 & 최적화 권장 |
-| **트리거** | 사용자 프롬프트: "PRD 작성 완료했어. 기술스택 분석해줘." |
-| **선행 조건** | PRD.md 작성 완료 (섹션 5 "기술 스택" 기재 필수) |
+| **트리거** | 슬래시 커맨드 `/analyze-stack` 또는 자연어 "기술스택 분석해줘" |
+| **선행 조건** | PRD.md 작성 완료 (섹션 5 "기술 스택" 기재 필수), ARCHITECTURE.md 변수 5개 입력 |
 | **후행 단계** | 대화형 확정 → `.claude/stack.json` 저장 → `/setup-project` 진행 |
 
 ---
@@ -411,7 +418,7 @@ Memcached + Python: ✅ (python-memcached)
 **결과 출력**:
 
 ```markdown
-### ❓ 사용자 확인 사항 (5가지)
+### ❓ 사용자 확인 사항 (6가지)
 
 아래 항목들은 **기술 스택 확정에 필수**입니다.
 각 질문에 **명확한 답변**을 부탁합니다.
@@ -616,30 +623,19 @@ Sprint 계획에 반영됨.
 
 ---
 
-## 에이전트 실행 조건 (설정)
+## 에이전트 실행 조건
 
-`.claude/settings.json`에 추가:
+이 에이전트는 **Claude Code 서브에이전트**로 자동 등록됩니다 (파일 상단 YAML frontmatter 참조).
+Claude Code는 사용자 프롬프트의 의도를 보고 `description`의 트리거 조건과 매칭되면 자동 위임합니다.
 
-```json
-{
-  "agents": {
-    "stack-analyzer": {
-      "enabled": true,
-      "model": "claude-opus-4-5",
-      "trigger": "user-prompt",
-      "trigger_keywords": [
-        "기술스택 분석해줘",
-        "기술 분석",
-        "스택 분석",
-        "technology stack"
-      ],
-      "requires_prior": ["PRD.md"],
-      "max_retries": 3,
-      "memory_update": true
-    }
-  }
-}
-```
+명시적 호출:
+- 슬래시 커맨드: `/analyze-stack` (`.claude/commands/analyze-stack.md` 참조)
+- 자연어: "기술스택 분석해줘", "스택 분석", "PRD 작성 완료, 스택 검토 필요"
+
+선행 조건 (에이전트가 자체 점검):
+1. `ARCHITECTURE.md` 변수 5개가 모두 입력됨 (`${...}` 잔존 시 경고)
+2. `PRD.md` §5 작성됨
+3. `.claude/stack.json` 미존재 또는 `status: "pending"`
 
 ---
 
@@ -660,5 +656,6 @@ Sprint 계획에 반영됨.
 
 ### 4. 호환성 재검증
 - 새로운 라이브러리 추가 시 호환성 재확인
-- `.claude/rules/backend.md`, `.claude/rules/frontend.md` 참고
+- `docs/stack-analysis-guide.md`의 호환성 매트릭스 참고
+- (향후) `.claude/rules/backend.md`, `.claude/rules/frontend.md` 추가 시 참조
 
