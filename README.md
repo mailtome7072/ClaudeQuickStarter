@@ -1,21 +1,26 @@
 # ClaudeQuickStarter
 
-**Claude Code 기반 엔터프라이즈급 프로젝트 템플릿 (feat. 동적 기술스택 선택)**
+**Claude Code 기반 프로젝트 부트스트랩 템플릿** — PRD 작성 후 대화로 기술스택을 확정하고, 그 결과를 바탕으로 앱 구조/Docker/CI를 자동 합성합니다.
 
-> 🚀 `git clone` → PRD 작성 → `/analyze-stack` → 스택 확정 → `/setup-project` → 개발 착수
-> 기술스택에 따른 반복 설정 제거. 자동화된 온보딩으로 **30분 안에 프로젝트 준비 완료**.
+```
+git clone → ARCHITECTURE 변수 입력 → PRD §5 작성 → /analyze-stack
+   → .claude/stack.json 확정 → /setup-project → 개발 착수
+```
+
+**버전**: v0.2.0-template (부트스트랩 메커니즘 동작 가능)
 
 ---
 
-## 📋 핵심 개선사항
+## 무엇을 제공하나
 
-| 항목 | 기존 (ClaudeStarter) | **ClaudeQuickStarter** |
-|------|---------------------|----------------------|
-| **기술스택 선택** | 수동 마이그레이션 필요 | ✅ PRD 기반 자동 분석 |
-| **SETUP.sh** | React + FastAPI만 가정 | ✅ 모든 스택 지원 (동적) |
-| **스택 검증** | 없음 | ✅ 완결성/호환성/최적화 |
-| **온보딩** | 2~3시간 | ✅ **30분 이내** |
-| **스택 변경 추적** | 없음 | ✅ `.claude/stack.json` |
+| 구성 요소 | 내용 |
+|---|---|
+| **에이전트 8종** | `stack-analyzer`, `prd-to-roadmap`, `phase-planner`, `sprint-planner`, `sprint-close`, `sprint-review`, `deploy-prod`, `hotfix-close` |
+| **슬래시 커맨드 5종** | `/init`(내장), `/analyze-stack`, `/setup-project`, `/sprint-dev`, `/restart` |
+| **부트스트랩 모듈 10종** | `.env`/Dockerfile/docker-compose/GitHub Actions 자동 생성기 + React-Vite/Vue/Next.js/FastAPI/Django/Express 스캐폴드 |
+| **하네스 정책 + 훅 3종** | scope-validator / forbidden-area-guard / loop-detector + 정책 문서 |
+| **운영 가이드** | strategy/(계획·브랜치·테스트·배포), docs/(harness-engineering·ci-policy·setup-guide·prompt-guide) |
+| **Cross-platform** | bash(`SETUP.sh`) + PowerShell(`SETUP.ps1`) |
 
 ---
 
@@ -97,35 +102,39 @@ sprint 1 계획 세워줘.
 
 ---
 
-## ✨ 주요 특징
+## 설계 원리
 
-### 1. **PRD 기반 자동 스택 분석**
-- PRD에 기술 작성 → Claude 분석 → 권장
-- 단순 체크박스 아님. **전문가 수준의 검증**
-- 완결성, 호환성, 성능, 보안 관점에서 종합 평가
+### 1. PRD가 진실의 원천
 
-### 2. **동적 SETUP.sh**
-- 선택 스택에 따라 **자동으로 적절한 초기화 스크립트 생성**
-- React? FastAPI? Django? Next.js? 모두 지원
-- Docker Compose 자동 생성 (스택 맞춤)
+PRD §5에 기술 스택을 명시 → `stack-analyzer`가 분석 → 사용자 답변 후 `.claude/stack.json`에 확정. 이후 모든 부트스트랩(`/setup-project`)과 운영(`prd-to-roadmap`, `sprint-planner` 등)은 이 파일을 참조.
 
-### 3. **강력한 하네스 엔지니어링**
-- AI 에이전트 자율성 + 안전성
-- Planning First, Strict Guardrails, Verification Loops 등 5대 원칙
+### 2. 정적 자산과 생성 자산의 분리
 
-### 4. **7개 특화 에이전트**
-- **`stack-analyzer`** ← 신규: PRD 분석 & 스택 최적화
-- `prd-to-roadmap`: PRD → ROADMAP
-- `sprint-planner`: Sprint 계획
-- `sprint-close`: Sprint 마무리
-- `sprint-review`: 코드 리뷰 & 회고
-- `deploy-prod`: 배포
-- `hotfix-close`: 긴급 패치
+- **정적 (템플릿에 포함)**: 에이전트 정의, 슬래시 커맨드, 부트스트랩 모듈, 정책 문서, `*.template` 파일
+- **생성 (스택 확정 후)**: `app/{frontend,backend}/`, `docker/*/Dockerfile.*`, `docker-compose.yml`, `.env`, `.github/workflows/*`
 
-### 5. **자동 훅 & 로깅**
-- Pre/Post 훅으로 자동 가드레일
-- 모든 에이전트 활동 로그 기록
-- 세션 summary 자동 생성
+스택을 가정하지 않으므로 React/FastAPI 외 조합도 동일한 흐름으로 지원.
+
+### 3. 하네스 엔지니어링 (5원칙)
+
+| 원칙 | 강제 도구 |
+|---|---|
+| Planning First | `scope-validator` 훅 (scope.md 작성 의무) |
+| Strict Guardrails | `forbidden-area-guard` 훅 (`.github/workflows/`, `SETUP.sh` 등 차단) |
+| Verification Loops | `loop-detector` 훅 (동일 파일 3회 수정 시 경고) |
+| Policy Enforcement | `deploy-prod` 에이전트 (배포 전 Policy Gate 검사) |
+| Continuous Verification | `deploy-prod` 에이전트 (배포 후 자동 검증 + 롤백) |
+
+상세: [`docs/harness-engineering/README.md`](docs/harness-engineering/README.md)
+
+### 4. Cross-platform
+
+| 환경 | 진입점 |
+|---|---|
+| Linux/macOS | `bash SETUP.sh` |
+| Windows | `pwsh ./SETUP.ps1` (네이티브) 또는 WSL/Git Bash |
+
+PowerShell 변형은 `.env` 생성을 네이티브로 처리(`RandomNumberGenerator`), 복잡한 스택 합성은 bash 모듈로 위임.
 
 ---
 
@@ -274,22 +283,6 @@ Infra: Docker + Docker Compose + AWS ECR
 
 ---
 
-## 🛡️ 하네스 엔지니어링 (Harness Engineering)
-
-5가지 원칙으로 AI 에이전트 자율성 + 안전성 확보:
-
-| 원칙 | 구현 |
-|------|------|
-| **1. Planning First** | 코드 수정 전 `scope.md` 작성 의무 |
-| **2. Strict Guardrails** | Forbidden Areas 자동 차단 |
-| **3. Verification Loops** | 3-retry 후 자동 분석 |
-| **4. Policy Enforcement** | 배포 전 Policy Gate 통과 필수 |
-| **5. Continuous Verification** | 배포 후 자동 검증 & 롤백 |
-
-상세: `docs/harness-engineering/README.md`
-
----
-
 ## 📖 문서 참고 순서
 
 1. **README.md** (이 파일)
@@ -334,23 +327,20 @@ A: 네. 에이전트 메모리(`.claude/agents/agent-memory/`)가 팀 전체에 
 
 ---
 
-## 🎯 다음 단계
-
-👉 **지금 바로 시작하세요!**
+## 시작하기
 
 ```bash
 git clone https://github.com/[your-org]/ClaudeQuickStarter my-project
 cd my-project
 rm -rf .git && git init && git remote add origin [your-repo]
-# PRD.md 작성 후
-# Claude Code: /init
-# Claude Code: "기술스택 분석해줘."
+# 1) ARCHITECTURE.md 변수 5개 입력
+# 2) PRD.md §5 기술 스택 작성
+# 3) Claude Code: /analyze-stack
+# 4) Claude Code: /setup-project
 ```
-
-Happy Coding! 🚀
 
 ---
 
-**버전**: 1.0-ClaudeQuickStarter  
-**최종 업데이트**: 2026-05-17  
+**버전**: v0.2.0-template
+**최종 업데이트**: 2026-05-18
 **기반**: ClaudeStarter (skyang)

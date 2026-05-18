@@ -113,19 +113,25 @@ process_template < "$TEMPLATE" \
           -e "s|\${FRONTEND_API_URL}|http://backend:$BE_PORT|g" \
     > "$OUT_PROD"
 
-# 개발용 (로컬): 같은 베이스에서 image 대신 build 사용으로 변형
-# 간단한 sed 변환 (이미지 라인 제거, build 컨텍스트 추가)
-sed -e '/image: \${DOCKER_REGISTRY}.*-backend:latest/c\    build: ./app/backend' \
-    -e '/image: \${DOCKER_REGISTRY}.*-frontend:latest/c\    build: ./app/frontend' \
-    -e '/image: \${DOCKER_REGISTRY}.*-nginx:latest/d' \
-    -e '/container_name: \${PROJECT_NAME}-nginx/,/restart: unless-stopped/d' \
-    -e "s|\${PROJECT_NAME}|$PROJECT_NAME|g" \
-    "$OUT_PROD" > "$OUT_DEV"
+# 개발용 (로컬): nginx 서비스 제외, backend/frontend는 image 대신 build 사용
+# awk로 nginx 블록(# === Nginx ===부터 다음 최상위 키워드 직전까지) 제거
+awk '
+    /^[[:space:]]*# === Nginx/ { skip=1; next }
+    /^volumes:/ || /^networks:/ { skip=0 }
+    !skip { print }
+' "$OUT_PROD" \
+    | sed -e "s|^    image: \${DOCKER_REGISTRY}.*-backend:latest|    build:\n      context: ./app/backend\n      dockerfile: ../../docker/backend/Dockerfile.prod|" \
+          -e "s|^    image: \${DOCKER_REGISTRY}.*-frontend:latest|    build:\n      context: ./app/frontend\n      dockerfile: ../../docker/frontend/Dockerfile.prod|" \
+          -e "s|\${PROJECT_NAME}|$PROJECT_NAME|g" \
+    > "$OUT_DEV"
 
-# 포트 노출 추가 (개발용)
-cat >> "$OUT_DEV" << EOF
+# 개발용 포트 노출 안내 주석
+cat >> "$OUT_DEV" << 'EOF'
 
-# (개발용 포트 노출 — 프로덕션에서는 nginx 뒤에 배치)
+# (개발용 포트 노출은 각 서비스에 ports: 섹션을 추가해서 사용)
+# 예시:
+#   backend.ports:  ["8000:8000"]
+#   frontend.ports: ["5173:5173"]
 EOF
 
 echo "✓ docker-compose.prod.yml 생성: $OUT_PROD"

@@ -39,6 +39,45 @@ services:
       retries: 5
   # @endif
 
+  # @if database.primary_database startswith "MySQL"
+  mysql:
+    image: mysql:8.0
+    container_name: ${PROJECT_NAME}-mysql
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  # @endif
+
+  # @if database.primary_database startswith "MongoDB"
+  mongo:
+    image: mongo:7
+    container_name: ${PROJECT_NAME}-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand({ ping: 1 })"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  # @endif
+
   # === Cache (조건부: stack.json database.cache) ===
   # @if database.cache startswith "Redis"
   redis:
@@ -70,6 +109,14 @@ services:
     depends_on:
       # @if database.primary_database startswith "PostgreSQL"
       postgres:
+        condition: service_healthy
+      # @endif
+      # @if database.primary_database startswith "MySQL"
+      mysql:
+        condition: service_healthy
+      # @endif
+      # @if database.primary_database startswith "MongoDB"
+      mongo:
         condition: service_healthy
       # @endif
       # @if database.cache startswith "Redis"
@@ -119,6 +166,12 @@ services:
 volumes:
   # @if database.primary_database startswith "PostgreSQL"
   postgres_data:
+  # @endif
+  # @if database.primary_database startswith "MySQL"
+  mysql_data:
+  # @endif
+  # @if database.primary_database startswith "MongoDB"
+  mongo_data:
   # @endif
 
 networks:
