@@ -1,0 +1,57 @@
+# 줄바꿈 정책
+# Windows 환경에서도 셸 스크립트와 일부 파일은 LF 강제 (실행 호환성)
+
+# 기본: Git이 자동 감지하여 텍스트는 정규화
+* text=auto eol=lf
+
+# 항상 LF (실행 가능 셸 스크립트, Docker, 설정)
+*.sh         text eol=lf
+*.bash       text eol=lf
+Dockerfile   text eol=lf
+Dockerfile*  text eol=lf
+*.dockerfile text eol=lf
+docker-compose*.yml text eol=lf
+
+# PowerShell은 Windows 네이티브이므로 CRLF 허용
+*.ps1   text eol=crlf
+*.psm1  text eol=crlf
+*.psd1  text eol=crlf
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Markdown, JSON, YAML: LF (cross-platform 도구 호환)
+*.md    text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+
+# Python
+*.py    text eol=lf
+*.toml  text eol=lf
+
+# JavaScript/TypeScript
+*.js    text eol=lf
+*.jsx   text eol=lf
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.vue   text eol=lf
+*.mjs   text eol=lf
+*.cjs   text eol=lf
+
+# 바이너리 (정규화 금지)
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.tar   binary
+*.gz    binary
+*.woff  binary
+*.woff2 binary
+
+# Diff 도우미
+*.lock linguist-generated=true
+pnpm-lock.yaml linguist-generated=true
+package-lock.json linguist-generated=true

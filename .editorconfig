@@ -1,0 +1,30 @@
+# EditorConfig — https://editorconfig.org
+# 모든 에디터에서 일관된 들여쓰기/줄바꿈
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{md,markdown}]
+trim_trailing_whitespace = false
+
+[*.{yml,yaml,json}]
+indent_size = 2
+
+[*.{js,jsx,ts,tsx,vue,mjs,cjs}]
+indent_size = 2
+
+[*.{html,css,scss,less}]
+indent_size = 2
+
+[Makefile]
+indent_style = tab
+
+[*.{ps1,psm1,psd1,bat,cmd}]
+end_of_line = crlf

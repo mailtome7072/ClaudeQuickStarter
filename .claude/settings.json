@@ -37,5 +37,21 @@
     ]
   },
 
-  "_windows_note": "Windows에서 bash가 PATH에 없으면 위 명령어를 'pwsh -File scripts/hooks/*.ps1'로 변경하세요. forbidden-area-guard만 .ps1 변형이 있으며, 나머지 두 훅은 Phase 8 후속 작업에서 PowerShell 변형 추가 예정."
+  "_windows_note": "Windows에서 bash가 PATH에 없으면 위 명령어를 'pwsh -File scripts/hooks/<이름>.ps1'로 변경하세요. 세 훅 모두 .ps1 변형 제공: scope-validator, forbidden-area-guard, loop-detector.",
+
+  "_windows_settings_example": {
+    "hooks": {
+      "PreToolUse": [
+        { "matcher": "Edit|Write|NotebookEdit", "hooks": [
+          { "type": "command", "command": "pwsh -File scripts/hooks/pretooluse-forbidden-area-guard.ps1" },
+          { "type": "command", "command": "pwsh -File scripts/hooks/pretooluse-scope-validator.ps1" }
+        ]}
+      ],
+      "PostToolUse": [
+        { "matcher": "Edit|Write", "hooks": [
+          { "type": "command", "command": "pwsh -File scripts/hooks/posttooluse-loop-detector.ps1" }
+        ]}
+      ]
+    }
+  }
 }

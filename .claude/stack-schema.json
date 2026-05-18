@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ClaudeQuickStarter/stack-schema.json",
+  "title": "ClaudeQuickStarter Stack Configuration",
+  "description": "stack-analyzer 에이전트가 생성하는 기술스택 레지스트리. /setup-project가 이를 읽어 부트스트랩 모듈을 합성.",
+  "type": "object",
+  "required": ["status"],
+
+  "properties": {
+    "$schema":  { "type": "string" },
+    "status":   { "type": "string", "enum": ["pending", "confirmed"] },
+    "message":  { "type": "string" },
+
+    "confirmed_at":  { "type": "string", "format": "date-time" },
+    "confirmed_by":  { "type": "string" },
+    "prd_version":   { "type": "string" },
+
+    "stack": {
+      "type": "object",
+      "properties": {
+        "frontend": {
+          "type": "object",
+          "properties": {
+            "enabled":              { "type": "boolean" },
+            "ui_framework":         { "type": "string", "description": "예: React 18+, Vue 3, Next.js 14+, Svelte" },
+            "language":             { "type": "string", "enum": ["TypeScript", "JavaScript"] },
+            "build_tool":           { "type": "string", "description": "예: Vite, Webpack, Turbopack" },
+            "package_manager":      { "type": "string", "enum": ["pnpm", "npm", "yarn", "bun"] },
+            "state_management":     { "type": ["string", "null"] },
+            "api_client":           { "type": ["string", "null"] },
+            "ui_component_library": { "type": ["string", "null"] },
+            "test_framework":       { "type": ["string", "null"] },
+            "e2e_test_framework":   { "type": ["string", "null"] },
+            "deploy_target":        { "type": ["string", "null"] },
+            "notes":                { "type": "string" }
+          }
+        },
+
+        "backend": {
+          "type": "object",
+          "properties": {
+            "enabled":           { "type": "boolean" },
+            "framework":         { "type": "string", "description": "예: FastAPI, Django, Express, Spring Boot, Go (Gin)" },
+            "language":          { "type": "string", "description": "예: Python 3.12, Node.js 20, Java 21, Go 1.22" },
+            "orm":               { "type": ["string", "null"], "description": "예: SQLAlchemy, Django ORM, Prisma, TypeORM, Drizzle, JPA" },
+            "test_framework":    { "type": ["string", "null"] },
+            "authentication":    { "type": "string", "description": "예: JWT + RefreshToken, Session-based, OAuth 2.0" },
+            "api_documentation": { "type": ["string", "null"] },
+            "background_jobs":   { "type": ["string", "null"] },
+            "package_manager":   { "type": ["string", "null"], "description": "Node 백엔드용 (pnpm/npm/yarn)" },
+            "notes":             { "type": "string" }
+          }
+        },
+
+        "database": {
+          "type": "object",
+          "properties": {
+            "primary_database":  { "type": "string", "description": "예: PostgreSQL 16, MySQL 8.0, MongoDB 7.0" },
+            "migration_tool":    { "type": ["string", "null"], "description": "예: Alembic, Django ORM, Flyway, Prisma Migrate" },
+            "cache":             { "type": ["string", "null"], "description": "예: Redis 7, Memcached, Valkey" },
+            "search_engine":     { "type": ["string", "null"] },
+            "message_queue":     { "type": ["string", "null"] },
+            "notes":             { "type": "string" }
+          }
+        },
+
+        "infrastructure": {
+          "type": "object",
+          "properties": {
+            "containerization":       { "type": "string" },
+            "orchestration":          { "type": ["string", "null"] },
+            "deployment_environment": {
+              "type": "string",
+              "description": "deploy.yml 환경별 단계 생성에 사용. 지원: AWS Lightsail/EC2/Self-hosted SSH, AWS ECS/Fargate, AWS App Runner, GCP Cloud Run, Azure Container Apps/App Service, Vercel, Heroku, Kubernetes(EKS/GKE/AKS)"
+            },
+            "ci_cd_platform":         { "type": "string" },
+            "monitoring":             { "type": ["string", "null"] },
+            "logging":                { "type": ["string", "null"] },
+            "secret_management":      { "type": ["string", "null"] },
+            "environment_isolation":  { "type": ["string", "null"] },
+            "notes":                  { "type": "string" }
+          }
+        },
+
+        "other": {
+          "type": "object",
+          "properties": {
+            "cdn":                { "type": ["string", "null"] },
+            "email_service":      { "type": ["string", "null"] },
+            "payment_processing": { "type": ["string", "null"] },
+            "file_storage":       { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+
+    "decisions": {
+      "type": "object",
+      "description": "6가지 의사결정 질문의 답변",
+      "properties": {
+        "logging_strategy":     { "type": ["string", "null"] },
+        "monitoring_enabled":   { "type": ["string", "null"] },
+        "mfa_enabled":          { "type": "boolean" },
+        "mfa_method":           { "type": ["string", "null"], "enum": [null, "TOTP", "SMS", "WebAuthn"] },
+        "file_storage":         { "type": ["string", "null"] },
+        "deployment_strategy":  {
+          "type": "string",
+          "description": "예: 'Continuous Deployment (CD)' 또는 'Continuous Delivery (CDelivery)'"
+        },
+        "test_coverage_goal": {
+          "type": "object",
+          "properties": {
+            "backend":  { "type": "number", "minimum": 0, "maximum": 100 },
+            "frontend": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        }
+      }
+    },
+
+    "compatibility_check": {
+      "type": "object",
+      "properties": {
+        "frontend_backend_compatible": { "type": "boolean" },
+        "database_orm_compatible":     { "type": "boolean" },
+        "language_runtime_compatible": { "type": "boolean" },
+        "cache_backend_compatible":    { "type": "boolean" },
+        "issues": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["category", "priority", "title"],
+        "properties": {
+          "category":       { "type": "string", "enum": ["performance", "security", "operations", "cost", "developer_experience"] },
+          "priority":       { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+          "title":          { "type": "string" },
+          "description":    { "type": "string" },
+          "implementation": { "type": "string" }
+        }
+      }
+    },
+
+    "change_log": {
+      "type": "array",
+      "description": "스택 변경 이력 (감사 추적)",
+      "items": {
+        "type": "object",
+        "required": ["version", "date", "change_description"],
+        "properties": {
+          "version":            { "type": "integer", "minimum": 1 },
+          "date":               { "type": "string", "format": "date-time" },
+          "changed_by":         { "type": "string" },
+          "change_description": { "type": "string" },
+          "reason":             { "type": "string" }
+        }
+      }
+    },
+
+    "example": {
+      "description": "템플릿 출시 시 예시. confirmed 상태에는 제거됨.",
+      "type": "object"
+    }
+  },
+
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "confirmed" } } },
+      "then": {
+        "required": ["confirmed_at", "stack", "decisions"]
+      }
+    }
+  ]
+}
