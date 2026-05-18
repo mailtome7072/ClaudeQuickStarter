@@ -1,0 +1,126 @@
+# ============================================================================
+# docker-compose.prod.yml.template
+#
+# 이 파일은 /setup-project가 .claude/stack.json을 읽어 변수 치환 + 조건부 섹션
+# 활성화를 거쳐 최종 docker-compose.prod.yml로 생성합니다.
+#
+# 치환되는 변수:
+#   ${PROJECT_NAME}, ${DOCKER_REGISTRY}, ${DOCKER_NAMESPACE}
+#   ${POSTGRES_*}, ${JWT_SECRET}, ${FRONTEND_API_ENV_VAR},
+#   ${FRONTEND_API_URL}, ${BACKEND_PORT}, ${HEALTH_PATH}
+#
+# 조건부 활성화 (stack.json 기반):
+#   - postgres 서비스: database.primary_database가 PostgreSQL일 때만
+#   - mysql 서비스: database.primary_database가 MySQL일 때만
+#   - mongodb 서비스: database.primary_database가 MongoDB일 때만
+#   - redis 서비스: database.cache가 Redis일 때만
+#   - JWT_SECRET 환경변수: backend.authentication에 JWT 포함 시
+# ============================================================================
+version: '3.9'
+
+services:
+  # === Database (조건부: stack.json database.primary_database) ===
+  # @if database.primary_database startswith "PostgreSQL"
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${PROJECT_NAME}-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  # @endif
+
+  # === Cache (조건부: stack.json database.cache) ===
+  # @if database.cache startswith "Redis"
+  redis:
+    image: redis:7-alpine
+    container_name: ${PROJECT_NAME}-redis
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  # @endif
+
+  # === Backend ===
+  backend:
+    image: ${DOCKER_REGISTRY}/${DOCKER_NAMESPACE}/${PROJECT_NAME}-backend:latest
+    container_name: ${PROJECT_NAME}-backend
+    environment:
+      # DB URL (스택 기반 생성)
+      DATABASE_URL: ${DATABASE_URL}
+      # @if database.cache startswith "Redis"
+      REDIS_URL: redis://redis:6379/0
+      # @endif
+      # @if backend.authentication contains "JWT"
+      JWT_SECRET: ${JWT_SECRET}
+      # @endif
+      LOG_LEVEL: INFO
+    depends_on:
+      # @if database.primary_database startswith "PostgreSQL"
+      postgres:
+        condition: service_healthy
+      # @endif
+      # @if database.cache startswith "Redis"
+      redis:
+        condition: service_healthy
+      # @endif
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${BACKEND_PORT}${HEALTH_PATH}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # === Frontend ===
+  frontend:
+    image: ${DOCKER_REGISTRY}/${DOCKER_NAMESPACE}/${PROJECT_NAME}-frontend:latest
+    container_name: ${PROJECT_NAME}-frontend
+    environment:
+      # FRONTEND_API_ENV_VAR는 스택에 따라 결정됨:
+      #   React (CRA): REACT_APP_API_URL
+      #   Vite 기반 React/Vue: VITE_API_URL
+      #   Next.js: NEXT_PUBLIC_API_URL
+      #   Nuxt: NUXT_PUBLIC_API_URL
+      ${FRONTEND_API_ENV_VAR}: ${FRONTEND_API_URL}
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # === Nginx (정적 자산 + 리버스 프록시) ===
+  nginx:
+    image: ${DOCKER_REGISTRY}/${DOCKER_NAMESPACE}/${PROJECT_NAME}-nginx:latest
+    container_name: ${PROJECT_NAME}-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  # @if database.primary_database startswith "PostgreSQL"
+  postgres_data:
+  # @endif
+
+networks:
+  app-network:
+    driver: bridge
