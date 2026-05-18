@@ -92,6 +92,11 @@ so that I can identify bottlenecks early.
 
 > **중요**: 이 섹션은 `/analyze-stack` 커맨드 실행 시 **stack-analyzer 에이전트가 검증**합니다.
 > 불확실한 부분은 "TBD" 또는 "권장받음"으로 표기해도 무방합니다.
+>
+> 아래 표의 **"선택" 컬럼은 가장 자주 사용되는 기본값**일 뿐이며,
+> 프로젝트 요구에 맞춰 **언제든 다른 옵션으로 교체 가능**합니다.
+> "대안" 컬럼 외의 다른 기술도 자유롭게 입력하세요 (예: Svelte, Go, MongoDB, Spring Boot 등).
+> `stack-analyzer`가 입력된 조합의 호환성을 검증합니다.
 
 ### 5.1 프론트엔드
 
@@ -277,26 +282,20 @@ Scenario: 정상 로그인
 
 ---
 
-## 📋 **다음 단계**
+## 📋 **다음 단계 (정본 부트스트랩 순서)**
 
-1. **PRD 작성 완료 후**: Claude Code에서 아래 입력
-   ```
-   PRD 작성 완료했어. 기술스택 분석해줘.
-   ```
+> 이 순서는 README.md, CLAUDE.md, ARCHITECTURE.md와 동일합니다.
 
-2. **stack-analyzer 실행**
-   - 완결성 검증
-   - 호환성 검사
-   - 개선 권장 사항
-   - 사용자 확인 질문
+| # | 단계 | 도구 / 명령 |
+|---|---|---|
+| 1 | ✅ ARCHITECTURE.md 변수 5개 입력 (선행) | 수동 |
+| 2 | ✅ **현재 단계**: PRD.md §5 작성 | 수동 |
+| 3 | `/analyze-stack` — 스택 분석 & 6가지 질문 | `stack-analyzer` 에이전트 |
+| 4 | `.claude/stack.json` 확정 (대화형) | 사용자 답변 |
+| 5 | `/setup-project` — 변수 치환 + 부트스트랩 | `setup-modules` |
+| 6 | ROADMAP 생성 ("PRD 기반 ROADMAP 생성해줘") | `prd-to-roadmap` 에이전트 |
+| 7 | Sprint 1 계획 ("sprint 1 계획 세워줘") | `sprint-planner` 에이전트 |
+| 8 | `/sprint-dev 1` → 개발 착수 | 사용자 |
 
-3. **대화를 통해 스택 확정**
-
-4. **/setup-project 실행**
-   - SETUP.sh 자동 생성 및 실행
-   - 개발 환경 초기화
-
-5. **Sprint 1 시작**
-   - ROADMAP 생성
-   - 구현 진입
+**다음 액션**: Claude Code에서 `/analyze-stack` 또는 "PRD 작성 완료했어. 기술스택 분석해줘."
 

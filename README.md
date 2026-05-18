@@ -19,7 +19,9 @@
 
 ---
 
-## 🚀 빠른 시작 (5단계)
+## 🚀 빠른 시작 (정본 부트스트랩 순서)
+
+> 아래 순서는 모든 문서(`README.md`, `CLAUDE.md`, `ARCHITECTURE.md`, `PRD.md`)에서 동일합니다.
 
 ### **0. 저장소 연결**
 
@@ -32,66 +34,60 @@ git add . && git commit -m "Initial commit"
 git push -u origin main
 ```
 
-### **1. PRD.md 작성** (기술 스택 섹션 포함)
+> **Windows 사용자**: PowerShell에서는 `rm -rf` 대신 `Remove-Item -Recurse -Force .git` 사용. SETUP 단계는 WSL2 또는 Git Bash 필요 (현재 `SETUP.ps1` 미제공 — Phase 5에서 추가 예정).
 
-```bash
-# PRD.md 열어서 섹션 5 "기술 스택" 작성
-# 예: Frontend (React), Backend (FastAPI), DB (PostgreSQL) 등
+### **1. `ARCHITECTURE.md` 변수 5개 입력**
+
+`ARCHITECTURE.md` 상단의 표에 `project_name`, `project_description`, `github_org`, `github_repo`, `decision_date`를 채웁니다. 이 값들은 `/setup-project` 단계에서 PRD/CLAUDE/docker-compose 등의 `${...}` 플레이스홀더에 일괄 치환됩니다.
+
+### **2. `PRD.md` §5 "기술 스택" 작성**
+
+각 항목의 "선택" 컬럼을 프로젝트 요구에 맞게 채웁니다. 불확실한 항목은 "TBD"로 두면 `stack-analyzer`가 대화로 확정합니다.
+
+### **3. `/analyze-stack` — 스택 분석 & 대화형 확정**
+
+Claude Code에서:
+
+```
+/analyze-stack
 ```
 
-### **2. Claude Code 실행**
+> 현재 슬래시 커맨드는 Phase 1에서 구현 예정. 그 전까지는 자연어로 "PRD 작성 완료했어. 기술스택 분석해줘."라고 입력하세요.
 
-```
-/init
-```
+**`stack-analyzer` 에이전트가 수행**:
+- 완결성 검증 (필수 항목 확인)
+- 호환성 검사 (기술 간 버전 호환)
+- 최적화 권장 (성능/보안)
+- **6가지 확인 질문** (로깅, 모니터링, MFA, 파일 저장소, 배포 전략, 테스트 커버리지)
 
-그 다음:
+→ 사용자 답변 후 `.claude/stack.json`이 `status: "confirmed"`로 생성됨
 
-```
-PRD 작성 완료했어. 기술스택 분석해줘.
-```
-
-**→ stack-analyzer 에이전트가 다음을 수행:**
-- ✅ 완결성 검증 (필수 항목 확인)
-- 📊 호환성 검사 (기술 간 버전 호환)
-- 🎯 최적화 권장 (성능/보안)
-- ❓ 6가지 확인 질문 (로깅, 모니터링, MFA, 저장소, 배포, 테스트)
-
-### **3. 스택 확정** (대화형)
-
-Claude와 함께:
-```
-Q1: 로깅 도구? (CloudWatch / ELK / Loki)
-Q2: 모니터링? (CloudWatch Metrics / Prometheus)
-Q3: MFA 필요? (Yes/No)
-Q4: 파일 저장소? (S3 / GCP / Local)
-Q5: 배포 전략? (CD / Continuous Delivery)
-Q6: 테스트 커버리지? (Backend XX%, Frontend XX%)
-```
-
-**→ `.claude/stack.json` 자동 생성**
-
-### **4. 환경 초기화**
+### **4. `/setup-project` — 변수 치환 + 스택 기반 부트스트랩**
 
 ```
 /setup-project
 ```
 
-**→ 자동 실행:**
-- SETUP.sh 동적 생성 (기술스택 맞춤형)
-- Frontend 초기화 (React/Vue/Next.js 등)
-- Backend 초기화 (FastAPI/Django/Express 등)
-- Docker Compose 자동 생성
-- GitHub Actions 활성화
-- `.env` 생성
+**세 단계로 동작**:
+1. `ARCHITECTURE.md`의 변수를 `${project_name}` 등 플레이스홀더에 일괄 치환
+2. `.claude/stack.json`을 읽어 `scripts/setup-modules/`의 적절한 모듈로 `app/`, `docker/`, `.github/workflows/`, `docker-compose.yml`, `.env` 합성
+3. `SETUP.sh`(또는 WSL/Git Bash 환경) 실행 — Frontend/Backend 의존성 설치, Docker 시작 테스트
 
-### **5. 개발 착수**
+### **5. ROADMAP 생성**
 
 ```
-ROADMAP 검토했어. sprint 1 계획 세워줘.
+PRD 기반으로 ROADMAP 생성해줘.
 ```
 
-→ Sprint 1 자동 계획 수립 후:
+→ `prd-to-roadmap` 에이전트가 `ROADMAP.md`를 PRD §3 (기능 요구사항) 기반으로 갱신.
+
+### **6. 개발 착수**
+
+```
+sprint 1 계획 세워줘.
+```
+
+→ `sprint-planner` 에이전트 (Phase 7 구현 예정)
 
 ```
 /sprint-dev 1
@@ -133,98 +129,115 @@ ROADMAP 검토했어. sprint 1 계획 세워줘.
 
 ---
 
-## 📚 사용 흐름도
+## 📚 사용 흐름도 (정본)
 
 ```
-PRD 작성 (기술 스택 섹션)
-    ↓
-/analyze-stack
-    ↓
-Claude: 분석 결과 제시
-    ↓
-사용자: 대화형 스택 확정 (6가지 질문)
-    ↓
-.claude/stack.json 생성
-    ↓
-/setup-project
-    ↓
-SETUP.sh 동적 생성 & 실행
-    ↓
-개발 환경 100% 준비
-    ↓
-/sprint-planner
-    ↓
-Sprint 1 계획 수립
-    ↓
-/sprint-dev 1
-    ↓
-개발 시작 🚀
+0. git clone
+   ↓
+1. ARCHITECTURE.md 변수 5개 입력
+   ↓
+2. PRD.md §5 기술 스택 작성
+   ↓
+3. /analyze-stack
+   ├─ stack-analyzer: 완결성/호환성/최적화 분석
+   └─ 사용자: 대화형 6가지 질문 답변
+   ↓
+4. .claude/stack.json 확정 (status: confirmed)
+   ↓
+5. /setup-project
+   ├─ ARCHITECTURE 변수 치환
+   ├─ stack.json 기반 setup-modules 합성
+   └─ SETUP.sh 실행
+   ↓
+6. prd-to-roadmap → ROADMAP.md 생성
+   ↓
+7. sprint-planner → Sprint 1 계획
+   ↓
+8. /sprint-dev 1 → 개발 착수 🚀
 ```
 
 ---
 
-## 📂 템플릿 구조 (주요 파일)
+## 📂 템플릿 구조
+
+### 정적 자산 (템플릿에 포함됨)
 
 ```
 ClaudeQuickStarter/
 ├── README.md ..................... 이 파일
-├── PRD.md ........................ 제품 요구사항 (기술 스택 표준화)
+├── PRD.md ........................ 제품 요구사항 템플릿 (§5 기술 스택)
 ├── ARCHITECTURE.md ............... 프로젝트 변수 레지스트리
 ├── CLAUDE.md ..................... AI 협업 지침
-├── SETUP.sh ...................... 모듈화 초기화 스크립트
+├── CHANGELOG.md .................. 템플릿/사용자 프로젝트 변경 이력
+├── ROADMAP.md .................... 로드맵 템플릿 (prd-to-roadmap이 채움)
+├── DEPLOY.md ..................... 배포 체크리스트 템플릿
+├── SETUP.sh ...................... 동적 부트스트랩 스크립트
 │
 ├── .claude/
 │   ├── agents/
-│   │   ├── stack-analyzer.md .... ⭐ NEW: 기술스택 분석 에이전트
-│   │   ├── prd-to-roadmap.md
-│   │   ├── sprint-planner.md
+│   │   ├── stack-analyzer.md .... 기술스택 분석 (현재 유일)
 │   │   └── agent-memory/
-│   │       └── stack-analyzer/
-│   │           └── MEMORY.md .... ⭐ NEW: 스택 분석 이력
-│   ├── hooks/ .................... 자동 훅 (Pre/Post/Stop)
-│   ├── rules/ .................... 조건부 규칙
-│   ├── skills/ ................... Claude 스킬
-│   └── stack.json ................ ⭐ NEW: 기술스택 레지스트리
+│   │       └── stack-analyzer/MEMORY.md
+│   ├── stack.json ............... 스택 레지스트리 (gitignored)
+│   ├── commands/ ................ 슬래시 커맨드 (Phase 1에서 채움)
+│   ├── rules/ ................... 정책 규칙 (Phase 6에서 채움)
+│   ├── skills/ .................. 스킬 (선택)
+│   └── tmp/
 │
 ├── docs/
-│   ├── stack-analysis-guide.md ... ⭐ NEW: stack-analyzer 상세
-│   ├── ci-policy.md .............. CI/CD 정책
-│   ├── setup-guide.md ............ 환경 설정 가이드
-│   ├── sprint/ ................... Sprint 계획 기록
-│   └── ...
+│   └── stack-analysis-guide.md .. 스택 선택 의사결정 가이드
 │
 ├── scripts/
-│   └── setup-modules/ ............ ⭐ NEW: 모듈화 SETUP 스크립트
-│       ├── setup-frontend-react.sh
-│       ├── setup-backend-fastapi.sh
-│       ├── generate-docker-compose.sh
-│       └── templates/
+│   ├── setup-modules/ ........... 부트스트랩 모듈 (Phase 1에서 채움)
+│   └── hooks/ ................... 자동 훅 (Phase 8에서 채움)
 │
+└── .mcp.json ..................... MCP 서버 설정 (Notion)
+```
+
+### 부트스트랩 후 생성되는 것
+
+`/setup-project` 실행 후 `.claude/stack.json`의 선택에 따라 다음이 생성됩니다:
+
+```
 ├── app/
-│   ├── frontend/ ................. (프로젝트 시작 시 생성)
-│   └── backend/ .................. (프로젝트 시작 시 생성)
-│
+│   ├── frontend/  (선택한 UI 프레임워크 코드)
+│   └── backend/   (선택한 백엔드 프레임워크 코드)
 ├── docker/
-│   ├── backend/Dockerfile.prod
-│   ├── frontend/Dockerfile.prod
+│   ├── backend/Dockerfile.prod   (스택 기반)
+│   ├── frontend/Dockerfile.prod  (스택 기반)
 │   └── nginx/Dockerfile
-│
-└── .github/
-    └── workflows/
-        ├── ci.yml ............... (스택 기반 자동 활성화)
-        └── deploy.yml
+├── docker-compose.yml            (로컬 개발)
+├── docker-compose.prod.yml       (프로덕션 — 스택 기반 변수 치환)
+├── .env                          (강한 시크릿 자동 생성)
+└── .github/workflows/
+    ├── ci.yml
+    └── deploy.yml
+```
+
+### 운영 중 누적되는 것
+
+```
+├── docs/
+│   ├── sprint/             (sprint-planner가 누적)
+│   ├── sprint-retrospectives/
+│   ├── test-reports/       (sprint-review가 누적)
+│   ├── deploy-history/     (deploy-prod가 누적)
+│   ├── risk-register/      (필요 시)
+│   └── arch/               (아키텍처 결정 기록)
+└── strategy/               (계획/브랜치/테스트/배포 전략)
 ```
 
 ---
 
-## 🔑 새로운 커맨드
+## 🔑 슬래시 커맨드
 
-| 커맨드 | 설명 |
-|--------|------|
-| `/analyze-stack` | PRD 분석 → 기술스택 권장 & 대화형 확정 |
-| `/setup-project` | 스택 기반 SETUP.sh 생성 & 실행 |
-| `/sprint-dev [n]` | Sprint n 구현 시작 |
-| `/init` | CLAUDE.md 갱신 |
+| 커맨드 | 설명 | 상태 |
+|--------|------|------|
+| `/init` | CLAUDE.md 갱신 | ✅ Claude Code 내장 |
+| `/analyze-stack` | PRD 분석 → 기술스택 권장 & 대화형 확정 | 🚧 Phase 1 |
+| `/setup-project` | 변수 치환 + 스택 기반 부트스트랩 + SETUP.sh 실행 | 🚧 Phase 1 |
+| `/sprint-dev [n]` | Sprint n 구현 시작 | 🚧 Phase 7 |
+| `/restart` | Docker 서비스 재시작 | 🚧 Phase 7 |
 
 ---
 
@@ -290,14 +303,16 @@ Infra: Docker + Docker Compose + AWS ECR
 
 ## 🚀 첫 프로젝트 체크리스트
 
-- [ ] 저장소 클론 & 연결
-- [ ] PRD.md 작성 (섹션 5 기술 스택 포함)
-- [ ] Claude Code: `/init` 실행
-- [ ] Claude Code: "기술스택 분석해줘." 입력
-- [ ] 6가지 확인 질문 답변
-- [ ] Claude Code: `/setup-project` 실행
-- [ ] Docker 실행 확인
-- [ ] Claude Code: "sprint 1 계획 세워줘." 입력
+- [ ] 저장소 클론 & 연결 (`git clone`, 원격 변경)
+- [ ] **ARCHITECTURE.md 변수 5개 입력** (`project_name`, `github_org` 등)
+- [ ] **PRD.md 작성** (특히 §5 기술 스택)
+- [ ] Claude Code: `/init` 실행 (CLAUDE.md 갱신)
+- [ ] Claude Code: `/analyze-stack` 실행 (또는 "기술스택 분석해줘.")
+- [ ] 6가지 확인 질문 답변 → `.claude/stack.json` 확정
+- [ ] Claude Code: `/setup-project` 실행 (변수 치환 + 부트스트랩)
+- [ ] Docker 실행 확인 (`docker-compose up`)
+- [ ] Claude Code: "PRD 기반 ROADMAP 생성해줘."
+- [ ] Claude Code: "sprint 1 계획 세워줘."
 - [ ] Claude Code: `/sprint-dev 1` 실행
 - [ ] 개발 착수 🎉
 

@@ -6,7 +6,7 @@
 
 ## 📋 프로젝트 변수 (필수 입력)
 
-아래 5개 항목을 **반드시 입력**하세요. 이 값들이 `README.md`, `CLAUDE.md`, `PRD.md`, `docs/ci-policy.md`, `docker-compose.prod.yml`에 자동 치환됩니다.
+아래 5개 항목을 **반드시 입력**하세요. 이 값들이 `README.md`, `CLAUDE.md`, `PRD.md`, `docs/ci-policy.md`, `scripts/setup-modules/templates/docker-compose.prod.yml.template` → `docker-compose.prod.yml`에 자동 치환됩니다.
 
 | 변수 | 값 | 예시 |
 |------|-----|------|
@@ -38,7 +38,7 @@ decision_date: 2026-05-17
 | `CLAUDE.md` | `${project_name}`, `${github_org}`, `${github_repo}` |
 | `PRD.md` | `${project_name}`, `${decision_date}`, `${github_org}` |
 | `docs/ci-policy.md` | `${github_org}`, `${github_repo}`, `${project_name}` |
-| `docker-compose.prod.yml` | `${github_org}`, `${github_repo}`, `${project_name}` |
+| `scripts/setup-modules/templates/docker-compose.prod.yml.template` → `docker-compose.prod.yml` | `${github_org}`, `${github_repo}`, `${project_name}` |
 
 ---
 
@@ -83,15 +83,16 @@ Production
 
 ---
 
-## 🚀 다음 단계
+## 🚀 다음 단계 (정본 부트스트랩 순서)
 
-1. **이 ARCHITECTURE.md의 프로젝트 변수 위의 5개 항목을 채운다**
-2. **PRD.md를 작성한다** (특히 섹션 5 "기술 스택")
-3. **Claude Code에서 `/setup-project` 실행**
-   ```
-   /setup-project
-   ```
-4. **변수 치환 완료 확인**
+이 파일을 채운 뒤에는 **README.md의 빠른 시작**과 동일한 순서를 따릅니다.
+
+1. ✅ **현재 단계**: 이 ARCHITECTURE.md의 변수 5개 입력
+2. **PRD.md** §5 "기술 스택" 작성
+3. Claude Code: `/analyze-stack` — 스택 분석 & 6가지 질문
+4. `.claude/stack.json` 확정 (`status: "confirmed"`)
+5. Claude Code: `/setup-project` — 변수 치환 + 부트스트랩
+6. ROADMAP 생성, Sprint 1 계획, 개발 착수
 
 ---
 
@@ -100,7 +101,8 @@ Production
 - 변수명 `${variable_name}` 형식은 유지 (중괄호와 `$` 제거 금지)
 - 공백이 포함된 프로젝트명은 하이픈(`-`)으로 대체 (예: `task-flow`, not `task flow`)
 - GitHub 저장소명은 URL 호환 형식 (소문자, 하이픈 사용)
+- `decision_date`는 YYYY-MM-DD 형식 (PRD.md 헤더에 치환됨)
 
 ---
 
-**수정 후 `/setup-project` 실행하세요.**
+**이 파일 입력 후 PRD.md §5 작성으로 진행하세요.**

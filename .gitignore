@@ -43,12 +43,15 @@ coverage.xml
 *.tmp
 temp/
 
+# 훅이 누적하는 카운터/오버라이드 (세션별)
+.claude/tmp/edit-counts.json
+.claude/tmp/forbidden-override
+.claude/tmp/scope.md
+
 # Docker
 .dockerignore
 docker-compose.override.yml
 
-# Git
-.git/
-
-# CloudStarter specific
+# ClaudeQuickStarter — 부트스트랩 단계에서 생성되는 파일 (gitignored)
+# stack-analyzer가 채우는 사용자별 스택 결정. 팀 공유는 docs/arch/stack-decision.md 사용.
 .claude/stack.json
